@@ -1,0 +1,931 @@
+<title>MEWZAC Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: a frame switcher above one app; the app's modules rearrange for phone, open Fold and tabletop (DESIGN_SYSTEM.md) */
+:root {
+  --bg-canvas: #F6F3EB;
+  --bg-surface: #EFECE2;
+  --bg-surface-muted: #E6E1D3;
+  --bg-dark: #23252A;
+  --bg-dark-elevated: #2F3238;
+  --accent-vermilion: #E85234;
+  --accent-marigold: #F2B438;
+  --neutral-inactive: #B8B4A7;
+  --text-primary: #1E2024;
+  --text-inverse: #F6F3EB;
+  --text-muted: #5F5D56;
+  --border-strong: #1E2024;
+  --border-subtle: #D6D1C4;
+  --cream-part: #F6F3EB;   /* pads and white keys: stay cream in both themes */
+  --ink-on-part: #1E2024;
+  --page: #E9E5DA;         /* behind the device frame */
+
+  --font-display: 'Fredoka', 'Outfit', ui-rounded, sans-serif;
+  --font-ui: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-pill: 9999px;
+  --radius-module: 20px;
+  --radius-lane: 14px;
+  --radius-pad: 10px;
+  --stroke-strong: 2px solid var(--border-strong);
+  --stroke-subtle: 1.5px solid var(--border-subtle);
+  --gap: 14px;
+  --pad: 16px;
+  --snap: cubic-bezier(0.2, 0, 0, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-canvas: #1D1F23; --bg-surface: #272A2F; --bg-surface-muted: #32353B;
+    --bg-dark: #15171A; --bg-dark-elevated: #24272C;
+    --accent-vermilion: #F0603F; --accent-marigold: #F4BE4A; --neutral-inactive: #5A5D63;
+    --text-primary: #EFEADD; --text-inverse: #EFEADD; --text-muted: #A6A296;
+    --border-strong: #0F1012; --border-subtle: #3A3D44;
+    --cream-part: #E9E4D6; --ink-on-part: #1E2024; --page: #141517;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg-canvas: #1D1F23; --bg-surface: #272A2F; --bg-surface-muted: #32353B;
+  --bg-dark: #15171A; --bg-dark-elevated: #24272C;
+  --accent-vermilion: #F0603F; --accent-marigold: #F4BE4A; --neutral-inactive: #5A5D63;
+  --text-primary: #EFEADD; --text-inverse: #EFEADD; --text-muted: #A6A296;
+  --border-strong: #0F1012; --border-subtle: #3A3D44;
+  --cream-part: #E9E4D6; --ink-on-part: #1E2024; --page: #141517;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 32px;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent-vermilion); outline-offset: 2px; }
+
+/* ---- the mockup's own bar (not part of the app) */
+.bench {
+  max-width: 980px; margin: 0 auto 14px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between;
+}
+.bench p { margin: 0; color: var(--text-muted); font-size: 13px; max-width: 60ch; }
+.seg { display: flex; gap: 4px; padding: 4px; border: var(--stroke-subtle); border-radius: var(--radius-pill); background: var(--bg-surface); flex-wrap: wrap; }
+.seg button {
+  border: 0; background: transparent; border-radius: var(--radius-pill); padding: 8px 14px; min-height: 36px;
+  font-weight: 700; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; color: var(--text-muted);
+}
+.seg button[aria-pressed="true"] { background: var(--bg-dark); color: var(--text-inverse); }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-canvas); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-canvas); } }
+.benchgroup { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---- the device frame */
+.frame {
+  margin: 0 auto; max-width: 100%;
+  border: 2px solid var(--border-strong); border-radius: 28px; overflow: hidden;
+  background: var(--bg-canvas);
+}
+.frame[data-frame="phone"] { width: 412px; }
+.frame[data-frame="open"] { width: 900px; }
+.frame[data-frame="tabletop"] { width: 900px; }
+
+/* ---- the app */
+.app {
+  container-type: inline-size;
+  display: grid; gap: var(--gap); padding: var(--pad);
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "head head" "transport transport" "timeline timeline" "deck pads" "keys keys";
+  background: var(--bg-canvas);
+}
+.head { grid-area: head; } .transport { grid-area: transport; } .timeline { grid-area: timeline; }
+.deck { grid-area: deck; } .pads { grid-area: pads; } .keys { grid-area: keys; } .hinge { grid-area: hinge; display: none; }
+
+.frame[data-frame="open"] .app, .frame[data-frame="auto"] .app.wide {
+  grid-template-columns: 1fr 1fr 0.85fr;
+  grid-template-areas: "head head head" "transport transport transport" "timeline timeline pads" "keys keys deck";
+}
+.frame[data-frame="tabletop"] .app {
+  grid-template-columns: 0.8fr 1.7fr 0.85fr;
+  grid-template-areas: "head head head" "transport transport transport" "timeline timeline timeline" "hinge hinge hinge" "pads keys deck";
+}
+.frame[data-frame="tabletop"] .hinge { display: block; }
+@media (vertical-viewport-segments: 2) {
+  .frame[data-frame="auto"] .app {
+    grid-template-columns: 0.8fr 1.7fr 0.85fr;
+    grid-template-areas: "head head head" "transport transport transport" "timeline timeline timeline" "hinge hinge hinge" "pads keys deck";
+  }
+  .frame[data-frame="auto"] .hinge { display: block; }
+}
+.hinge { height: 2px; margin: 4px 0; background: var(--border-subtle); border-radius: 2px; position: relative; }
+.hinge span {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  background: var(--bg-canvas); padding: 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text-muted);
+}
+
+/* modules */
+.module { background: var(--bg-surface); border: var(--stroke-subtle); border-radius: var(--radius-module); padding: var(--pad); min-width: 0; }
+.module h2 { margin: 0 0 12px; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.mono { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* header */
+.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wordmark { font-family: var(--font-display); font-weight: 700; line-height: 0.9; position: relative; }
+.wordmark .w1 { display: block; color: var(--accent-vermilion); font-size: 34px; letter-spacing: -0.01em; }
+.wordmark .w2 { display: block; font-size: 22px; font-weight: 600; }
+.wordmark svg { position: absolute; right: -22px; top: -6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: var(--stroke-strong); border-color: var(--text-primary); border-radius: var(--radius-pill); background: transparent; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--neutral-inactive); }
+.chip[data-on="true"] i { background: var(--accent-vermilion); }
+
+/* transport */
+.transport { display: flex; align-items: center; gap: 6px; padding: 6px; border: var(--stroke-subtle); border-radius: var(--radius-pill); background: var(--bg-canvas); flex-wrap: wrap; }
+.tbtn {
+  flex: 1 1 0; min-width: 72px; min-height: 48px; border: 0; border-radius: var(--radius-pill);
+  background: var(--bg-surface-muted); color: var(--text-primary); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 700; font-size: 13px; letter-spacing: 0.06em;
+  transition: transform 120ms var(--snap), background-color 120ms var(--snap);
+}
+.tbtn svg { flex: none; }
+.tbtn .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-vermilion); }
+.tbtn[aria-pressed="true"] { background: var(--bg-dark); color: var(--text-inverse); }
+#rec[aria-pressed="true"] { background: var(--accent-vermilion); color: var(--text-inverse); }
+#rec[aria-pressed="true"] .dot { background: var(--text-inverse); }
+.counter { display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px; min-height: 48px; }
+.reel { width: 26px; height: 26px; }
+.reel circle, .reel path { fill: none; stroke: var(--text-primary); stroke-width: 2; }
+.reel .hub { fill: var(--text-primary); stroke: none; }
+.spinning .reel { animation: spin 1.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.counter .mono { font-size: 15px; min-width: 4.2ch; }
+
+/* timeline */
+.timeline { background: var(--bg-canvas); border: var(--stroke-strong); display: flex; flex-direction: column; }
+.frame[data-frame="tabletop"] .timeline { min-height: 0; }
+.tl-grid { display: grid; grid-template-columns: minmax(104px, 28%) 1fr; gap: 0 8px; position: relative; }
+.ruler { grid-column: 2; position: relative; height: 26px; }
+.ruler span { position: absolute; top: 0; transform: translateX(-1px); font-size: 12px; color: var(--text-muted); }
+.ruler span::after { content: ""; position: absolute; left: 0; top: 18px; width: 2px; height: 6px; background: var(--text-muted); border-radius: 1px; }
+.lanes { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.lane { display: grid; grid-template-columns: minmax(104px, 28%) 1fr; gap: 8px; background: var(--bg-dark); border-radius: var(--radius-lane); padding: 8px; border: 2px solid transparent; }
+.lane[data-selected="true"] { border-color: var(--accent-vermilion); }
+.lane-head { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0; color: var(--text-inverse); }
+.lane-name { border: 0; background: transparent; padding: 0; text-align: left; cursor: pointer; color: inherit; min-height: 28px; }
+.lane-name b { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lane-name small { display: block; font-size: 11px; color: var(--neutral-inactive); font-weight: 600; }
+:root[data-theme="dark"] .lane-name small { color: var(--text-muted); }
+.ms { display: flex; gap: 6px; }
+.ms button {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--neutral-inactive); background: transparent;
+  color: var(--neutral-inactive); font-size: 12px; font-weight: 700; cursor: pointer; position: relative;
+}
+.ms button::before { content: ""; position: absolute; inset: -6px; }
+.ms button[aria-pressed="true"].m { background: var(--accent-vermilion); border-color: var(--accent-vermilion); color: var(--text-inverse); }
+.ms button[aria-pressed="true"].s { background: var(--accent-marigold); border-color: var(--accent-marigold); color: var(--ink-on-part); }
+.lane-body { position: relative; min-height: 58px; border-radius: 10px; overflow: hidden; }
+.lane[data-muted="true"] .lane-body { opacity: 0.35; }
+.steps { position: absolute; inset: 0; display: grid; gap: 2px; align-items: end; }
+.step { border-radius: var(--radius-pill); background: var(--bg-dark-elevated); height: 22%; }
+.step.k { background: var(--accent-vermilion); height: 100%; }
+.step.s { background: var(--accent-marigold); height: 78%; }
+.step.h { background: var(--cream-part); height: 46%; }
+.step.t { background: var(--neutral-inactive); height: 62%; }
+.beatgrid { position: absolute; inset: 0; display: grid; gap: 2px; }
+.beatgrid i { background: var(--bg-dark-elevated); border-radius: 6px; }
+.note { position: absolute; height: 8px; border-radius: var(--radius-pill); }
+.clip { position: absolute; top: 6px; bottom: 6px; background: var(--cream-part); border-radius: 8px; padding: 4px 6px; overflow: hidden; }
+.clip span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-on-part); text-transform: uppercase; white-space: nowrap; }
+.clip svg { width: 100%; height: 22px; display: block; }
+.clip path { fill: var(--ink-on-part); }
+.playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent-vermilion); pointer-events: none; left: 0; }
+.playhead::before { content: ""; position: absolute; top: 0; left: -6px; width: 14px; height: 18px; border-radius: 7px; background: var(--accent-vermilion); }
+.tl-note { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); }
+
+/* dials */
+.dials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 8px; }
+.dial { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: ns-resize; touch-action: none; user-select: none; border-radius: 12px; }
+.dial svg { width: 100%; max-width: 92px; height: auto; display: block; }
+.dial .track { fill: none; stroke: var(--neutral-inactive); stroke-width: 6; stroke-linecap: round; }
+.dial .arc1 { fill: none; stroke: var(--accent-vermilion); stroke-width: 6; stroke-linecap: round; }
+.dial .arc2 { fill: none; stroke: var(--accent-marigold); stroke-width: 6; stroke-linecap: round; }
+.dial .core { fill: var(--bg-dark); }
+.dial .ptr { stroke: var(--accent-marigold); stroke-width: 3; stroke-linecap: round; }
+.dial .read { fill: var(--text-inverse); font-family: var(--font-mono); font-weight: 700; font-size: 15px; text-anchor: middle; }
+.dial .read2 { fill: var(--neutral-inactive); font-family: var(--font-ui); font-weight: 700; font-size: 7px; letter-spacing: 0.06em; text-anchor: middle; }
+.dial .label { font-size: 11px; }
+
+/* pads */
+.pads h2 .label { color: var(--text-muted); }
+.padgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pad {
+  aspect-ratio: 1 / 1; max-width: 100%; min-height: 40px; border: 2px solid var(--border-strong); border-radius: var(--radius-pad); cursor: pointer;
+  touch-action: none; transition: transform 100ms var(--snap), background-color 100ms var(--snap);
+}
+.pad.k { background: var(--accent-vermilion); } .pad.s { background: var(--accent-marigold); }
+.pad.h { background: var(--cream-part); } .pad.t { background: var(--neutral-inactive); }
+.pad.hit, .tbtn:active, .key.hit { transform: scale(0.96); }
+.pad.hit { background: var(--bg-dark); }
+.padlegend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; margin-top: 10px; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.padlegend span { display: flex; align-items: center; gap: 6px; }
+.padlegend i { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid var(--border-strong); flex: none; }
+
+/* keyboard */
+.keys { background: var(--bg-dark); border-radius: var(--radius-module); padding: 12px; color: var(--text-inverse); min-width: 0; display: flex; flex-direction: column; }
+.keystrip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.keystrip .title { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-right: auto; }
+.keystrip .bar { color: var(--accent-vermilion); font-size: 12px; }
+.target { background: var(--accent-marigold); color: var(--ink-on-part); border-radius: var(--radius-pill); padding: 4px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+.oct { display: flex; align-items: center; gap: 6px; }
+.oct button { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--neutral-inactive); background: transparent; color: var(--text-inverse); font-size: 18px; font-weight: 700; cursor: pointer; line-height: 1; }
+.keyboard { position: relative; display: grid; gap: 4px; flex: 1; min-height: 150px; touch-action: none; user-select: none; }
+.frame[data-frame="phone"] .keyboard { height: 130px; }
+.key { cursor: pointer; transition: transform 100ms var(--snap), background-color 100ms var(--snap); }
+.key.white { background: var(--cream-part); border: 1.5px solid var(--border-strong); border-radius: 0 0 8px 8px; height: 100%; }
+.key.white.landC { background: var(--accent-vermilion); }
+.key.white.landF { background: var(--accent-marigold); }
+.key.black { position: absolute; top: 0; height: 60%; background: var(--bg-dark-elevated); border: 1.5px solid var(--border-strong); border-radius: 0 0 6px 6px; z-index: 1; }
+:root[data-theme="dark"] .key.black { background: #3A3D44; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .key.black { background: #3A3D44; } }
+.key.white.hit { background: var(--accent-marigold); }
+.key.white.landF.hit { background: var(--accent-vermilion); }
+.key.black.hit { background: var(--accent-vermilion); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  background: var(--bg-dark); color: var(--text-inverse); border-radius: var(--radius-pill); padding: 12px 20px;
+  font-weight: 600; font-size: 14px; max-width: calc(100% - 32px); z-index: 5;
+}
+.example-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+
+@container (max-width: 520px) {
+  .wordmark .w1 { font-size: 30px; }
+  .tbtn { min-width: 60px; font-size: 12px; padding: 0 6px; }
+  .tbtn .txt-long { display: none; }
+  .counter { display: none; }
+  .lane, .tl-grid { grid-template-columns: 92px 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinning .reel { animation: none; }
+  .pad, .tbtn, .key { transition: none; }
+  .pad.hit, .tbtn:active, .key.hit { transform: none; }
+}
+</style>
+
+<div class="bench">
+  <p>A clickable mockup of the MEWZAC companion app. Tap the pads and keys to play (sound starts on your first tap), press REC to record into the tape, and switch the frame to see each Fold layout.</p>
+  <div class="benchgroup">
+    <div class="seg" role="group" aria-label="Screen">
+      <button type="button" data-frame="phone" aria-pressed="false">Closed</button>
+      <button type="button" data-frame="open" aria-pressed="false">Open</button>
+      <button type="button" data-frame="tabletop" aria-pressed="true">Tabletop</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme-set="system" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</div>
+
+<div class="frame" id="frame" data-frame="tabletop">
+  <div class="app" id="app">
+    <header class="head">
+      <div class="wordmark" aria-label="mewzac studio">
+        <span class="w1">mewzac</span><span class="w2">studio</span>
+        <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 1 L13 9 L21 11 L13 13 L11 21 L9 13 L1 11 L9 9 Z" fill="var(--accent-vermilion)"/></svg>
+      </div>
+      <button class="chip" id="fm1" type="button" data-on="false"><i></i>FM-1 not connected</button>
+    </header>
+
+    <div class="transport" id="transport">
+      <button class="tbtn" id="rec" type="button" aria-pressed="false"><span class="dot"></span>REC</button>
+      <button class="tbtn" id="play" type="button" aria-pressed="false">
+        <svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5 L12.5 8 L2 14.5 Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>PLAY</button>
+      <button class="tbtn" id="undo" type="button">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3 L1.5 6.5 L5 10 M2 6.5 H10 A4 4 0 0 1 10 14.5 H7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>UNDO</button>
+      <button class="tbtn" id="loop" type="button" aria-pressed="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7 A5 5 0 0 1 12.5 5 M13 9 A5 5 0 0 1 3.5 11 M10.5 2.5 L13 5 L10 6.5 M5.5 13.5 L3 11 L6 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>LOOP</button>
+      <div class="counter" id="counter" aria-label="Tape position">
+        <svg class="reel" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11"/><circle class="hub" cx="13" cy="13" r="3"/><path d="M13 4 V8 M5.2 17.5 L8.7 15.5 M20.8 17.5 L17.3 15.5"/></svg>
+        <span class="mono" id="pos">1.1</span>
+        <svg class="reel" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11"/><circle class="hub" cx="13" cy="13" r="3"/><path d="M13 4 V8 M5.2 17.5 L8.7 15.5 M20.8 17.5 L17.3 15.5"/></svg>
+      </div>
+    </div>
+
+    <section class="module timeline" aria-label="Timeline">
+      <h2>Tape <span class="example-tag">Example song &middot; 2 bars</span></h2>
+      <div class="tl-grid">
+        <div class="ruler mono" id="ruler"></div>
+        <div class="lanes" id="lanes"></div>
+      </div>
+      <p class="tl-note">Tap a track's name to choose what the keys play.</p>
+    </section>
+
+    <div class="hinge" aria-hidden="true"><span>HINGE</span></div>
+
+    <section class="module deck" aria-label="Control deck">
+      <h2>Control deck</h2>
+      <div class="dials" id="dials"></div>
+    </section>
+
+    <section class="module pads" aria-label="Drum pads">
+      <h2>Drum pads</h2>
+      <div class="padgrid" id="padgrid"></div>
+      <div class="padlegend">
+        <span><i style="background:var(--accent-vermilion)"></i>Kicks</span>
+        <span><i style="background:var(--accent-marigold)"></i>Snares, claps</span>
+        <span><i style="background:var(--cream-part)"></i>Hats</span>
+        <span><i style="background:var(--neutral-inactive)"></i>Toms, bells</span>
+      </div>
+    </section>
+
+    <section class="keys" aria-label="Keyboard">
+      <div class="keystrip">
+        <span class="title">Keys</span>
+        <span class="target" id="target">PLAYS: FM-1</span>
+        <span class="bar mono">BAR 1-2</span>
+        <div class="oct">
+          <button type="button" id="octdn" aria-label="Octave down">&minus;</button>
+          <span class="mono" id="octv">C3</span>
+          <button type="button" id="octup" aria-label="Octave up">+</button>
+        </div>
+      </div>
+      <div class="keyboard" id="keyboard"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id)
+  const STEPS = 32 // 2 bars of 16ths
+
+  // ---------------------------------------------------------------- the song (an example to start from)
+  const tracks = [
+    { id: 'fm1', name: 'FM-1', sub: 'FM piano', kind: 'notes', color: 'var(--accent-vermilion)', mute: false, solo: false,
+      notes: [[0, 60, 3], [4, 64, 2], [6, 67, 2], [8, 69, 4], [16, 65, 3], [20, 69, 2], [22, 72, 2], [24, 67, 6]] },
+    { id: 'drums', name: 'Drums', sub: 'Boom kit', kind: 'drums', mute: false, solo: false, hits: [] },
+    { id: 'mic', name: 'Mic', sub: 'Sampler', kind: 'clips', mute: false, solo: false,
+      clips: [[2, 3, 'meow'], [12, 4, 'clap clap'], [26, 3, 'boop']] },
+    { id: 'synth', name: 'Synth', sub: 'Bass', kind: 'notes', color: 'var(--accent-marigold)', mute: false, solo: false,
+      notes: [[0, 36, 2], [3, 36, 1], [6, 43, 2], [10, 41, 2], [16, 41, 2], [19, 41, 1], [22, 45, 2], [26, 43, 4]] }
+  ]
+  const PADS = [
+    ['k', 'kick', 0], ['k', 'kick', 3], ['k', 'kick', -3], ['k', 'kick', 7],
+    ['s', 'snare', 0], ['s', 'clap', 0], ['s', 'snare', 4], ['s', 'clap', 5],
+    ['h', 'hat', 0], ['h', 'hat', 4], ['h', 'open', 0], ['h', 'hat', -3],
+    ['t', 'tom', 0], ['t', 'tom', 5], ['t', 'bell', 0], ['t', 'bell', 4]
+  ]
+  const drums = tracks[1]
+  drums.hits = Array.from({ length: STEPS }, () => [])
+  for (let s = 0; s < STEPS; s++) {
+    if (s % 8 === 0 || s === 11 || s === 27) drums.hits[s].push(0)
+    if (s % 8 === 4) drums.hits[s].push(4)
+    if (s % 2 === 0) drums.hits[s].push(8)
+  }
+  let selected = 'fm1'
+  let octave = 0
+
+  // ---------------------------------------------------------------- undo history
+  const history = []
+  const snapshot = () => JSON.stringify(tracks.map((t) => ({ notes: t.notes, hits: t.hits })))
+  function remember() {
+    history.push(snapshot())
+    if (history.length > 40) history.shift()
+  }
+  function restore(s) {
+    const d = JSON.parse(s)
+    tracks.forEach((t, i) => {
+      if (d[i].notes) t.notes = d[i].notes
+      if (d[i].hits) t.hits = d[i].hits
+    })
+    renderLanes()
+  }
+
+  // ---------------------------------------------------------------- sound (Web Audio, after the first tap)
+  let ac = null, master = null, filter = null, delay = null, fb = null, wet = null
+  const params = { tempo: 100, tone: 0.62, echo: 0.3, level: 0.75 }
+  function audio() {
+    if (ac) return ac
+    const AC = window.AudioContext || window.webkitAudioContext
+    if (!AC) return null
+    ac = new AC()
+    master = ac.createGain()
+    filter = ac.createBiquadFilter()
+    filter.type = 'lowpass'
+    delay = ac.createDelay(1.5)
+    fb = ac.createGain()
+    wet = ac.createGain()
+    const comp = ac.createDynamicsCompressor()
+    filter.connect(master)
+    master.connect(comp)
+    comp.connect(ac.destination)
+    master.connect(delay)
+    delay.connect(fb)
+    fb.connect(delay)
+    delay.connect(wet)
+    wet.connect(comp)
+    applyParams()
+    return ac
+  }
+  function applyParams() {
+    if (!ac) return
+    master.gain.value = params.level * 0.8
+    filter.frequency.value = 200 * Math.pow(60, params.tone)
+    delay.delayTime.value = (60 / params.tempo) * 0.75
+    fb.gain.value = params.echo * 0.55
+    wet.gain.value = params.echo * 0.6
+  }
+  const hz = (n) => 440 * Math.pow(2, (n - 69) / 12)
+  function env(g, t, a, peak, d) {
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(peak, t + a)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d)
+  }
+  function noise(t, dur) {
+    const b = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate)
+    const d = b.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+    const s = ac.createBufferSource()
+    s.buffer = b
+    s.start(t)
+    return s
+  }
+  function drum(i, t = ac.currentTime) {
+    const [, type, semis] = PADS[i]
+    const g = ac.createGain()
+    g.connect(master)
+    const p = Math.pow(2, semis / 12)
+    if (type === 'kick' || type === 'tom') {
+      const o = ac.createOscillator()
+      const f0 = type === 'kick' ? 150 : 220, f1 = type === 'kick' ? 48 : 110
+      o.frequency.setValueAtTime(f0 * p, t)
+      o.frequency.exponentialRampToValueAtTime(f1 * p, t + 0.12)
+      o.connect(g)
+      env(g, t, 0.003, 0.9, type === 'kick' ? 0.4 : 0.3)
+      o.start(t)
+      o.stop(t + 0.5)
+    } else if (type === 'bell') {
+      for (const f of [587, 845]) {
+        const o = ac.createOscillator()
+        o.type = 'square'
+        o.frequency.value = f * p
+        o.connect(g)
+        o.start(t)
+        o.stop(t + 0.35)
+      }
+      env(g, t, 0.002, 0.12, 0.3)
+    } else {
+      const hp = ac.createBiquadFilter()
+      hp.type = type === 'snare' || type === 'clap' ? 'bandpass' : 'highpass'
+      hp.frequency.value = (type === 'snare' ? 1800 : type === 'clap' ? 1200 : 7000) * p
+      const n = noise(t, 0.5)
+      n.connect(hp)
+      hp.connect(g)
+      const d = type === 'open' ? 0.35 : type === 'hat' ? 0.05 : type === 'clap' ? 0.2 : 0.16
+      env(g, t, 0.002, type === 'hat' || type === 'open' ? 0.35 : 0.7, d)
+      if (type === 'snare') {
+        const o = ac.createOscillator()
+        o.frequency.value = 190 * p
+        const og = ac.createGain()
+        o.connect(og)
+        og.connect(master)
+        env(og, t, 0.002, 0.4, 0.08)
+        o.start(t)
+        o.stop(t + 0.2)
+      }
+    }
+  }
+  function tone(trackId, n, t = ac.currentTime, len = 0.3) {
+    const g = ac.createGain()
+    g.connect(filter)
+    if (trackId === 'fm1') { // a two-operator FM voice, like the FM-1's engine in miniature
+      const car = ac.createOscillator(), mod = ac.createOscillator(), mg = ac.createGain()
+      car.frequency.value = hz(n)
+      mod.frequency.value = hz(n) * 2
+      mg.gain.setValueAtTime(hz(n) * 3, t)
+      mg.gain.exponentialRampToValueAtTime(hz(n) * 0.2, t + 0.6)
+      mod.connect(mg)
+      mg.connect(car.frequency)
+      car.connect(g)
+      env(g, t, 0.004, 0.32, Math.max(0.5, len))
+      car.start(t); mod.start(t)
+      car.stop(t + len + 1); mod.stop(t + len + 1)
+    } else {
+      const o = ac.createOscillator()
+      o.type = 'sawtooth'
+      o.frequency.value = hz(n)
+      o.connect(g)
+      env(g, t, 0.005, 0.28, Math.max(0.25, len))
+      o.start(t)
+      o.stop(t + len + 0.6)
+    }
+  }
+  function blip(t, word) {
+    const o = ac.createOscillator(), g = ac.createGain()
+    o.type = 'triangle'
+    const f = word === 'meow' ? 700 : word === 'boop' ? 320 : 500
+    o.frequency.setValueAtTime(f, t)
+    o.frequency.exponentialRampToValueAtTime(word === 'meow' ? f * 1.6 : f * 0.6, t + 0.25)
+    o.connect(g)
+    g.connect(master)
+    env(g, t, 0.01, 0.25, 0.3)
+    o.start(t)
+    o.stop(t + 0.4)
+    if (word === 'clap clap') { drum(5, t); drum(5, t + 0.18) }
+  }
+
+  // ---------------------------------------------------------------- the tape: a step clock
+  let playing = false, recording = false, looping = true, step = -1, nextT = 0, timer = 0, stepStart = 0
+  const stepDur = () => 60 / params.tempo / 4
+  const audible = (t) => {
+    const anySolo = tracks.some((x) => x.solo)
+    return anySolo ? t.solo : !t.mute
+  }
+  function schedule() {
+    while (nextT < ac.currentTime + 0.1) {
+      step = (step + 1) % STEPS
+      if (step === 0 && !looping && stepStart) { stop(); return }
+      stepStart = 1
+      const t = nextT
+      for (const tr of tracks) {
+        if (!audible(tr)) continue
+        if (tr.kind === 'drums') for (const p of tr.hits[step]) drum(p, t)
+        if (tr.kind === 'notes') for (const [s, n, l] of tr.notes) if (s === step) tone(tr.id, n, t, l * stepDur())
+        if (tr.kind === 'clips') for (const [s, , w] of tr.clips) if (s === step) blip(t, w)
+      }
+      if (recording && step % 4 === 0) click(t, step % 16 === 0)
+      nextT += stepDur()
+    }
+  }
+  function click(t, accent) {
+    const o = ac.createOscillator(), g = ac.createGain()
+    o.frequency.value = accent ? 1600 : 1100
+    o.connect(g)
+    g.connect(ac.destination)
+    env(g, t, 0.001, 0.15, 0.03)
+    o.start(t)
+    o.stop(t + 0.06)
+  }
+  function start() {
+    if (!audio()) return
+    ac.resume()
+    playing = true
+    step = -1
+    stepStart = 0
+    nextT = ac.currentTime + 0.05
+    timer = setInterval(schedule, 25)
+    schedule()
+    sync()
+  }
+  function stop() {
+    playing = false
+    recording = false
+    clearInterval(timer)
+    sync()
+  }
+  function nowStep() { // the 16th nearest to now, for recording
+    const t = ac.currentTime
+    const back = (nextT - t) / stepDur()
+    return Math.round(step + 1 - back + STEPS) % STEPS
+  }
+
+  // ---------------------------------------------------------------- drawing
+  function renderRuler() {
+    const r = $('ruler')
+    r.innerHTML = ''
+    for (let b = 0; b < 2; b++) for (let beat = 0; beat < 4; beat++) {
+      const s = document.createElement('span')
+      s.style.left = ((b * 16 + beat * 4) / STEPS) * 100 + '%'
+      s.textContent = beat === 0 ? String(b + 1) : ''
+      if (beat === 0) r.append(s)
+      else { s.textContent = ''; r.append(s) }
+    }
+  }
+  function waveform(seed, w = 80) {
+    let x = seed * 9301 + 49297, d = 'M0 11 '
+    const pts = []
+    for (let i = 0; i <= w; i += 2) {
+      x = (x * 9301 + 49297) % 233280
+      const a = 2 + (x / 233280) * 8 * Math.sin((i / w) * Math.PI)
+      pts.push([i, a])
+    }
+    for (const [i, a] of pts) d += `L${i} ${11 - a} `
+    for (const [i, a] of pts.reverse()) d += `L${i} ${11 + a} `
+    return `<svg viewBox="0 0 ${w} 22" preserveAspectRatio="none" aria-hidden="true"><path d="${d}Z"/></svg>`
+  }
+  function renderLanes() {
+    const box = $('lanes')
+    box.innerHTML = ''
+    tracks.forEach((tr, i) => {
+      const lane = document.createElement('div')
+      lane.className = 'lane'
+      lane.dataset.selected = tr.id === selected
+      lane.dataset.muted = !audible(tr)
+      const melodic = tr.kind === 'notes'
+      lane.innerHTML = `<div class="lane-head">
+          <button class="lane-name" type="button" ${melodic ? '' : 'aria-disabled="true"'}><b>${i + 1}. ${tr.name}</b><small>${tr.sub}</small></button>
+          <div class="ms"><button class="m" type="button" aria-pressed="${tr.mute}" aria-label="Mute ${tr.name}">M</button><button class="s" type="button" aria-pressed="${tr.solo}" aria-label="Solo ${tr.name}">S</button></div>
+        </div><div class="lane-body"></div>`
+      const body = lane.querySelector('.lane-body')
+      if (tr.kind === 'drums') {
+        const g = document.createElement('div')
+        g.className = 'steps'
+        g.style.gridTemplateColumns = `repeat(${STEPS}, 1fr)`
+        tr.hits.forEach((h) => {
+          const s = document.createElement('i')
+          const has = (c) => h.some((p) => PADS[p][0] === c)
+          s.className = 'step ' + (has('k') ? 'k' : has('s') ? 's' : has('t') ? 't' : has('h') ? 'h' : '')
+          g.append(s)
+        })
+        body.append(g)
+      } else {
+        const g = document.createElement('div')
+        g.className = 'beatgrid'
+        g.style.gridTemplateColumns = 'repeat(8, 1fr)'
+        g.innerHTML = '<i></i>'.repeat(8)
+        body.append(g)
+        if (tr.kind === 'notes') {
+          const lo = Math.min(...tr.notes.map((n) => n[1]), 60) - 2, hi = Math.max(...tr.notes.map((n) => n[1]), lo + 12) + 2
+          for (const [s, n, l] of tr.notes) {
+            const e = document.createElement('i')
+            e.className = 'note'
+            e.style.left = (s / STEPS) * 100 + '%'
+            e.style.width = `calc(${(l / STEPS) * 100}% - 2px)`
+            e.style.top = `calc(${(1 - (n - lo) / (hi - lo)) * 100}% - 8px)`
+            e.style.background = tr.color
+            body.append(e)
+          }
+        } else {
+          tr.clips.forEach(([s, l, w], k) => {
+            const c = document.createElement('div')
+            c.className = 'clip'
+            c.style.left = (s / STEPS) * 100 + '%'
+            c.style.width = (l / STEPS) * 100 + '%'
+            c.innerHTML = `<span>${w}</span>${waveform(k + 3)}`
+            body.append(c)
+          })
+        }
+      }
+      lane.querySelector('.lane-name').addEventListener('click', () => {
+        if (!melodic) return toast('The keys play the FM-1 or the Synth track. Drums use the pads.')
+        selected = tr.id
+        $('target').textContent = 'PLAYS: ' + tr.name.toUpperCase()
+        renderLanes()
+      })
+      lane.querySelector('.m').addEventListener('click', () => { tr.mute = !tr.mute; renderLanes() })
+      lane.querySelector('.s').addEventListener('click', () => { tr.solo = !tr.solo; renderLanes() })
+      box.append(lane)
+    })
+    const ph = document.createElement('div')
+    ph.className = 'playhead'
+    ph.id = 'playhead'
+    box.style.position = 'relative'
+    box.append(ph)
+    placePlayhead()
+  }
+  function placePlayhead() {
+    const ph = $('playhead')
+    const firstBody = document.querySelector('.lane-body')
+    if (!ph || !firstBody) return
+    const lanes = $('lanes').getBoundingClientRect(), b = firstBody.getBoundingClientRect()
+    const s = playing && ac ? Math.max(0, step + 1 - (nextT - ac.currentTime) / stepDur()) : 0
+    ph.style.left = b.left - lanes.left + (b.width * ((s + STEPS) % STEPS)) / STEPS + 'px'
+    const pos = Math.floor((s + STEPS) % STEPS)
+    $('pos').textContent = `${Math.floor(pos / 16) + 1}.${Math.floor((pos % 16) / 4) + 1}`
+  }
+  function frameLoop() {
+    if (playing) placePlayhead()
+    requestAnimationFrame(frameLoop)
+  }
+  function sync() {
+    $('play').setAttribute('aria-pressed', playing)
+    $('rec').setAttribute('aria-pressed', recording)
+    $('loop').setAttribute('aria-pressed', looping)
+    $('transport').classList.toggle('spinning', playing)
+    if (!playing) placePlayhead()
+  }
+
+  // ---------------------------------------------------------------- dials
+  const DIALS = [
+    { key: 'tempo', label: 'Tempo', min: 60, max: 180, read: (v) => Math.round(v), unit: 'BPM' },
+    { key: 'tone', label: 'Tone', min: 0, max: 1 },
+    { key: 'echo', label: 'Echo', min: 0, max: 1 },
+    { key: 'level', label: 'Level', min: 0, max: 1 }
+  ]
+  const R = 30, C = 2 * Math.PI * R
+  function drawDial(el, d) {
+    const v = (params[d.key] - d.min) / (d.max - d.min)
+    const arc = 0.75 * C
+    const a1 = Math.min(v, 0.6) * arc, a2 = Math.max(0, v - 0.6) * arc
+    const ang = (135 + v * 270) * (Math.PI / 180)
+    el.querySelector('.track').setAttribute('stroke-dasharray', `${arc} ${C}`)
+    el.querySelector('.arc1').setAttribute('stroke-dasharray', `${a1} ${C}`)
+    const r2 = el.querySelector('.arc2')
+    r2.setAttribute('stroke-dasharray', `${a2} ${C}`)
+    r2.setAttribute('stroke-dashoffset', `${-0.6 * arc}`)
+    const p = el.querySelector('.ptr')
+    if (p) {
+      p.setAttribute('x2', 40 + Math.cos(ang) * 17)
+      p.setAttribute('y2', 40 + Math.sin(ang) * 17)
+      p.setAttribute('x1', 40 + Math.cos(ang) * 6)
+      p.setAttribute('y1', 40 + Math.sin(ang) * 6)
+    }
+    const rd = el.querySelector('.read')
+    if (rd) rd.textContent = d.read(params[d.key])
+    el.setAttribute('aria-valuenow', Math.round(params[d.key] * (d.read ? 1 : 100)))
+  }
+  function buildDials() {
+    const box = $('dials')
+    for (const d of DIALS) {
+      const el = document.createElement('div')
+      el.className = 'dial'
+      el.tabIndex = 0
+      el.setAttribute('role', 'slider')
+      el.setAttribute('aria-label', d.label)
+      el.setAttribute('aria-valuemin', d.read ? d.min : 0)
+      el.setAttribute('aria-valuemax', d.read ? d.max : 100)
+      const center = d.read
+        ? `<text class="read" x="40" y="44">${d.read(params[d.key])}</text><text class="read2" x="40" y="53">${d.unit}</text>`
+        : `<line class="ptr" x1="40" y1="40" x2="40" y2="24"/>`
+      el.innerHTML = `<svg viewBox="0 0 80 80" aria-hidden="true">
+          <circle class="track" cx="40" cy="40" r="${R}" transform="rotate(135 40 40)"/>
+          <circle class="arc1" cx="40" cy="40" r="${R}" transform="rotate(135 40 40)"/>
+          <circle class="arc2" cx="40" cy="40" r="${R}" transform="rotate(135 40 40)"/>
+          <circle class="core" cx="40" cy="40" r="${d.read ? 21 : 20}"/>${center}</svg>
+        <span class="label">${d.label}</span>`
+      const set = (dv) => {
+        const span = d.max - d.min
+        params[d.key] = Math.min(d.max, Math.max(d.min, params[d.key] + dv * span))
+        drawDial(el, d)
+        applyParams()
+      }
+      let y = null
+      el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); y = e.clientY })
+      el.addEventListener('pointermove', (e) => { if (y === null) return; set((y - e.clientY) / 180); y = e.clientY })
+      el.addEventListener('pointerup', () => (y = null))
+      el.addEventListener('pointercancel', () => (y = null))
+      el.addEventListener('wheel', (e) => { e.preventDefault(); set(-Math.sign(e.deltaY) * 0.04) }, { passive: false })
+      el.addEventListener('keydown', (e) => {
+        const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key]
+        if (k) { e.preventDefault(); set(k * 0.03) }
+      })
+      box.append(el)
+      drawDial(el, d)
+    }
+  }
+
+  // ---------------------------------------------------------------- pads
+  function buildPads() {
+    const box = $('padgrid')
+    PADS.forEach(([c, type], i) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'pad ' + c
+      b.setAttribute('aria-label', type)
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        if (!audio()) return
+        ac.resume()
+        drum(i)
+        flash(b)
+        if (recording && playing) {
+          if (!recorded) { remember(); recorded = true }
+          const s = nowStep()
+          if (!drums.hits[s].includes(i)) drums.hits[s].push(i)
+          renderLanes()
+        }
+      })
+      box.append(b)
+    })
+  }
+  let recorded = false
+  function flash(el) {
+    el.classList.add('hit')
+    setTimeout(() => el.classList.remove('hit'), 120)
+  }
+
+  // ---------------------------------------------------------------- keyboard: two octaves from C, landmarks on C and F
+  const WHITE = [0, 2, 4, 5, 7, 9, 11]
+  function buildKeys() {
+    const kb = $('keyboard')
+    kb.innerHTML = ''
+    const whites = 14
+    kb.style.gridTemplateColumns = `repeat(${whites}, 1fr)`
+    const notes = []
+    for (let o = 0; o < 2; o++) for (const w of WHITE) notes.push(o * 12 + w)
+    notes.forEach((n) => {
+      const k = document.createElement('div')
+      k.className = 'key white' + (n % 12 === 0 ? ' landC' : n % 12 === 5 ? ' landF' : '')
+      k.dataset.n = n
+      kb.append(k)
+    })
+    notes.forEach((n, i) => {
+      if ([0, 2, 5, 7, 9].includes(n % 12)) {
+        const k = document.createElement('div')
+        k.className = 'key black'
+        k.dataset.n = n + 1
+        k.style.left = `calc(${((i + 1) / whites) * 100}% - ${(0.62 / whites) * 50}% - 2px)`
+        k.style.width = `${(0.62 / whites) * 100}%`
+        kb.append(k)
+      }
+    })
+    const held = new Map()
+    kb.addEventListener('pointerdown', (e) => {
+      const k = e.target.closest('.key')
+      if (!k || !audio()) return
+      e.preventDefault()
+      ac.resume()
+      kb.setPointerCapture(e.pointerId)
+      const n = 48 + octave * 12 + Number(k.dataset.n)
+      tone(selected, n)
+      k.classList.add('hit')
+      held.set(e.pointerId, { k, n, s: playing && recording ? nowStep() : -1 })
+    })
+    const up = (e) => {
+      const h = held.get(e.pointerId)
+      if (!h) return
+      held.delete(e.pointerId)
+      h.k.classList.remove('hit')
+      if (h.s >= 0) {
+        if (!recorded) { remember(); recorded = true }
+        const len = Math.max(1, (nowStep() - h.s + STEPS) % STEPS)
+        tracks.find((t) => t.id === selected).notes.push([h.s, h.n, Math.min(len, 8)])
+        renderLanes()
+      }
+    }
+    kb.addEventListener('pointerup', up)
+    kb.addEventListener('pointercancel', up)
+  }
+
+  // ---------------------------------------------------------------- transport and the rest
+  $('play').addEventListener('click', () => (playing ? stop() : start()))
+  $('rec').addEventListener('click', () => {
+    if (recording) { recording = false; sync(); return }
+    recording = true
+    recorded = false
+    if (!playing) start()
+    sync()
+    toast('Recording. Play the pads or keys and it joins the loop.')
+  })
+  $('loop').addEventListener('click', () => { looping = !looping; sync() })
+  $('undo').addEventListener('click', () => {
+    if (!history.length) return toast('Nothing to undo yet.')
+    restore(history.pop())
+    recorded = false
+    toast('Took back the last recording.')
+  })
+  $('octdn').addEventListener('click', () => { octave = Math.max(-2, octave - 1); $('octv').textContent = 'C' + (3 + octave) })
+  $('octup').addEventListener('click', () => { octave = Math.min(2, octave + 1); $('octv').textContent = 'C' + (3 + octave) })
+  $('fm1').addEventListener('click', () => toast('In the app, this connects to the FM-1 over USB. Here, the FM-1 track plays a phone sound instead.'))
+
+  let toastTimer = 0
+  function toast(t) {
+    const el = $('toast')
+    el.textContent = t
+    el.hidden = false
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => (el.hidden = true), 2600)
+  }
+
+  // the mockup bar: frame and theme
+  function setFrame(f) {
+    $('frame').dataset.frame = f
+    for (const b of document.querySelectorAll('[data-frame]')) if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', b.dataset.frame === f)
+    try { localStorage.setItem('mewzac-frame', f) } catch {}
+    requestAnimationFrame(placePlayhead)
+  }
+  for (const b of document.querySelectorAll('button[data-frame]')) b.addEventListener('click', () => setFrame(b.dataset.frame))
+  function setTheme(t) {
+    if (t === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.setAttribute('data-theme', t)
+    for (const b of document.querySelectorAll('[data-theme-set]')) b.setAttribute('aria-pressed', b.dataset.themeSet === t)
+  }
+  for (const b of document.querySelectorAll('[data-theme-set]')) b.addEventListener('click', () => setTheme(b.dataset.themeSet))
+  addEventListener('resize', () => requestAnimationFrame(placePlayhead))
+
+  renderRuler()
+  renderLanes()
+  buildDials()
+  buildPads()
+  buildKeys()
+  let f = 'tabletop'
+  try { f = localStorage.getItem('mewzac-frame') || (innerWidth < 700 ? 'phone' : 'tabletop') } catch { f = innerWidth < 700 ? 'phone' : 'tabletop' }
+  setFrame(f)
+  sync()
+  frameLoop()
+})()
+</script>
